@@ -1,0 +1,5 @@
+Microsoft Foundry Local, yapay zekâ modellerinin kullanıcının kendi cihazında çalıştırılmasını sağlar.
+
+Modeller yerel olarak çalıştığı için uygulamalar internet bağlantısı olmadan da çıkarım yapabilir.
+
+Foundry Local, cihazdaki uygun CPU, GPU veya NPU donanımından yararlanabilir.

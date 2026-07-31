@@ -1,0 +1,5 @@
+SQLite, ayrı bir veritabanı sunucusu gerektirmeyen hafif bir veritabanıdır.
+
+Veriler tek bir dosya içerisinde saklanır. Bu nedenle küçük ve yerel uygulamalar için uygundur.
+
+Python, sqlite3 modülü sayesinde SQLite veritabanlarıyla doğrudan çalışabilir.

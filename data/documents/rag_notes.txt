@@ -1,0 +1,5 @@
+Retrieval-Augmented Generation, kısaca RAG, bir yapay zekâ modelinin cevap vermeden önce dış kaynaklardan bilgi bulmasını sağlayan bir yöntemdir.
+
+RAG sisteminde önce kullanıcı sorusuyla ilgili belge parçaları bulunur. Daha sonra bu parçalar yapay zekâ modeline bağlam olarak verilir.
+
+Bu yöntem, modelin yalnızca kendi eğitim verisine dayanmasını engeller ve yanlış bilgi üretme riskini azaltır.
