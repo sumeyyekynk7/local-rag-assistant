@@ -14,3 +14,12 @@ Yerel dokümanlardan ilgili bilgileri bulmak ve bulunan bilgilere dayanarak kull
 - Embeddings
 - Vector Search
 - Yerel LLM
+
+
+## Tamamlananlar
+
+- Python proje ortamı oluşturuldu.
+- Sanal ortam hazırlandı.
+- Foundry Local SDK kuruldu.
+- Yerel model başarıyla indirildi ve çalıştırıldı.
+- Modele Türkçe bir soru gönderildi ve cevap alındı.
