@@ -1,0 +1,37 @@
+# Python
+**pycache**/
+*.py[cod]
+*.pyd
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+kernel.errors.txt
+
+# Local database
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Foundry Local / model cache
+.foundry/
+models/
+cache/
+
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini
