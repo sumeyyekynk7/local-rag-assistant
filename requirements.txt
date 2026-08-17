@@ -1,2 +1,4 @@
 ﻿foundry-local-sdk-winml==1.2.4
 openai==2.50.0
+pypdf
+streamlit

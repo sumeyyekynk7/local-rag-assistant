@@ -45,7 +45,7 @@ Belgelere dayalı cevap üretme
 
 ## Proje Özellikleri
 
-- Yerel `.txt` belgelerini okur.
+- Yerel `.txt`, `.docx` ve `.pdf` belgelerini okur.
 - Belgeleri paragraf tabanlı parçalara ayırır.
 - Her parça için embedding üretir.
 - Metinleri ve embedding vektörlerini SQLite veritabanında saklar.
@@ -54,6 +54,7 @@ Belgelere dayalı cevap üretme
 - Düşük benzerlik puanına sahip soruları filtreler.
 - Belgelerde cevabı bulunmayan sorulara cevap üretmez.
 - Cevapla birlikte kullanılan kaynak dosyaları ve benzerlik puanlarını gösterir.
+- Streamlit arayüzünde sohbet, kaynaklar ve kaynak metinlerini gösterir.
 - Tüm modeli ve veriyi yerel cihazda çalıştırır.
 
 ## Kullanılan Modeller
@@ -89,9 +90,11 @@ local-rag-assistant/
 │   ├── list_models.py
 │   └── main.py
 │
+├── document_loader.py
 ├── ingest_documents.py
 ├── retrieval.py
 ├── rag_assistant.py
+├── streamlit_app.py
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -101,7 +104,7 @@ local-rag-assistant/
 
 ### ingest_documents.py
 
-`data/documents` klasöründeki metin belgelerini okur.
+`data/documents` klasöründeki desteklenen belgeleri okur.
 
 Görevleri:
 
@@ -109,6 +112,17 @@ Görevleri:
 - Metinleri parçalara ayırır.
 - Her parça için embedding oluşturur.
 - Verileri `data/rag_database.db` dosyasına kaydeder.
+
+### document_loader.py
+
+Belge okuma katmanıdır.
+
+Görevleri:
+
+- `.txt` dosyalarını doğrudan okur.
+- `.docx` dosyalarından paragraf metinlerini çıkarır.
+- `.pdf` dosyalarından sayfa metinlerini çıkarır.
+- Desteklenen belgeleri ingestion hattına ortak formatta verir.
 
 ### retrieval.py
 
@@ -134,6 +148,18 @@ Görevleri:
 - Belge bağlamını yerel dil modeline gönderir.
 - Kaynaklara dayalı cevap üretir.
 - Kullanılan kaynakları terminalde gösterir.
+
+### streamlit_app.py
+
+Projenin web arayüzüdür.
+
+Görevleri:
+
+- Kullanıcı sorularını sohbet ekranından alır.
+- Aynı retrieval ve RAG akışını kullanarak cevap üretir.
+- Kaynak dosyaları, benzerlik puanlarını ve kaynak metinlerini gösterir.
+- Demo için hazır örnek soru butonları sunar.
+- Oturum boyunca soru-cevap geçmişini ekranda tutar.
 
 ## Kurulum
 
@@ -164,13 +190,13 @@ pip install -r requirements.txt
 
 ## Belgeleri Hazırlama
 
-Kullanmak istediğiniz `.txt` belgelerini şu klasöre ekleyin:
+Kullanmak istediğiniz `.txt`, `.docx` veya `.pdf` belgelerini şu klasöre ekleyin:
 
 ```text
 data/documents/
 ```
 
-Belgelerde paragraflar arasında boş satır bulunmalıdır. Uygulama metinleri boş satırlara göre parçalara ayırır.
+Metin belgelerinde paragraflar arasında boş satır bulunmalıdır. Uygulama metinleri boş satırlara göre parçalara ayırır.
 
 ## Veritabanını Oluşturma
 
@@ -243,6 +269,16 @@ q
 
 yazabilirsiniz.
 
+## Streamlit Arayüzünü Çalıştırma
+
+Web arayüzünü başlatmak için:
+
+```powershell
+python -m streamlit run streamlit_app.py
+```
+
+Arayüz açıldığında soru yazabilir, cevabı ve kullanılan kaynakları aynı ekranda görebilirsiniz.
+
 ## Benzerlik Eşiği
 
 Uygulama, alakasız soruların yerel dil modeline gönderilmesini engellemek için minimum benzerlik eşiği kullanır.
@@ -279,21 +315,15 @@ Belgelerde olmadığı için reddedilen sorular:
 
 ## Mevcut Sınırlamalar
 
-- Yalnızca `.txt` belgeleri desteklenmektedir.
 - Metinler paragraf tabanlı olarak parçalanmaktadır.
 - Arama işlemi tüm embedding vektörlerini belleğe alarak yapılmaktadır.
 - Benzerlik eşiği sabit bir değerdir.
 - Küçük belge koleksiyonları için uygundur.
-- Kullanıcı arayüzü henüz terminal tabanlıdır.
-- Sohbet geçmişi tutulmamaktadır.
+- Web arayüzündeki sohbet geçmişi yalnızca mevcut oturumda tutulmaktadır.
 
 ## Gelecek Geliştirmeler
 
-- Streamlit veya Gradio arayüzü eklemek
-- PDF ve Word belgelerini desteklemek
 - Chunk boyutunu ve overlap yapısını geliştirmek
-- Sohbet geçmişi eklemek
-- Kaynak metinleri arayüzde göstermek
 - Otomatik test sistemi hazırlamak
 - Daha büyük belge koleksiyonları için vektör veritabanı kullanmak
 - Benzerlik eşiğini test sonuçlarına göre dinamik hâle getirmek
@@ -315,3 +345,6 @@ Belgelerde olmadığı için reddedilen sorular:
 - Kaynak gösterimi eklendi.
 - Alakasız sorular için benzerlik eşiği eklendi.
 - Doğru ve yanlış soru senaryoları test edildi.
+- Streamlit arayüzü eklendi.
+- Demo için örnek soru butonları ve kaynak metni görünümü iyileştirildi.
+- Word ve PDF belge okuma desteği eklendi.

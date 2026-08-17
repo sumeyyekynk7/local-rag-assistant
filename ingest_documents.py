@@ -4,6 +4,9 @@ from pathlib import Path
 
 from foundry_local_sdk import Configuration, FoundryLocalManager
 
+from console_utils import configure_utf8_output
+from document_loader import iter_supported_documents
+
 
 DOCUMENTS_DIRECTORY = Path("data/documents")
 DATABASE_PATH = Path("data/rag_database.db")
@@ -35,25 +38,6 @@ def clear_database() -> None:
         cursor = connection.cursor()
         cursor.execute("DELETE FROM document_chunks")
         connection.commit()
-
-
-def read_text_files() -> list[dict]:
-    documents = []
-
-    for file_path in DOCUMENTS_DIRECTORY.glob("*.txt"):
-        content = file_path.read_text(encoding="utf-8").strip()
-
-        if not content:
-            continue
-
-        documents.append(
-            {
-                "source": file_path.name,
-                "content": content,
-            }
-        )
-
-    return documents
 
 
 def split_into_chunks(text: str) -> list[str]:
@@ -103,17 +87,22 @@ def save_chunk(
 
 
 def main() -> None:
+    configure_utf8_output()
+
     print("Veritabanı hazırlanıyor...")
 
     create_database()
     clear_database()
 
-    print("Metin dosyaları okunuyor...")
+    print("Belgeler okunuyor...")
 
-    documents = read_text_files()
+    documents = iter_supported_documents(DOCUMENTS_DIRECTORY)
 
     if not documents:
-        print("data/documents klasöründe .txt dosyası bulunamadı.")
+        print(
+            "data/documents klasöründe desteklenen belge bulunamadı "
+            "(.txt, .docx, .pdf)."
+        )
         return
 
     print(f"{len(documents)} belge bulundu.")

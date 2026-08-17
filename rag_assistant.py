@@ -2,6 +2,7 @@ import openai
 
 from foundry_local_sdk import Configuration, FoundryLocalManager
 
+from console_utils import configure_utf8_output
 from retrieval import get_top_chunks
 
 
@@ -167,6 +168,8 @@ Soruyu yalnızca yukarıdaki belge bağlamına dayanarak cevapla.
 
 
 def main() -> None:
+    configure_utf8_output()
+
     print("Foundry Local başlatılıyor...")
 
     config = Configuration(app_name="local-rag-assistant")

@@ -5,6 +5,8 @@ from pathlib import Path
 
 from foundry_local_sdk import Configuration, FoundryLocalManager
 
+from console_utils import configure_utf8_output
+
 
 DATABASE_PATH = Path("data/rag_database.db")
 TOP_K = 2
@@ -133,6 +135,8 @@ def get_top_chunks(
 
 
 def main() -> None:
+    configure_utf8_output()
+
     print("Foundry Local başlatılıyor...")
 
     config = Configuration(app_name="local-rag-assistant")
