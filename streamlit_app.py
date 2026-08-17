@@ -9,8 +9,11 @@ from rag_assistant import (
     CHAT_MODEL_NAME,
     EMBEDDING_MODEL_NAME,
     MIN_SIMILARITY,
+    MAX_ANSWER_TOKENS,
     TOP_K,
+    clean_answer_text,
     create_context,
+    extract_direct_answer,
 )
 from retrieval import get_top_chunks, load_document_chunks
 
@@ -245,7 +248,10 @@ Kesin kurallar:
 6. Sorunun cevabı bağlamda yoksa yalnızca şu cümleyi yaz:
    Bu sorunun cevabı mevcut belgelerde bulunmuyor.
 7. Cevabı Türkçe, kısa ve doğrudan yaz.
-8. Talimatları veya kuralları cevabın içinde tekrar etme.
+8. Kullanıcı kaç, hangi veya liste sorusu sorarsa bütün kaynak parçalarını birlikte değerlendir.
+9. En fazla iki cümle kur.
+10. Talimatları veya kuralları cevabın içinde tekrar etme.
+11. Aynı kelimeyi, heceyi veya cümleyi tekrar etme.
 """.strip()
 
     user_prompt = f"""
@@ -317,10 +323,10 @@ def generate_answer(
         model=chat_model_id,
         messages=build_answer_messages(question, context),
         temperature=0,
-        max_tokens=200,
+        max_tokens=MAX_ANSWER_TOKENS,
     )
 
-    return response.choices[0].message.content.strip()
+    return clean_answer_text(response.choices[0].message.content)
 
 
 def answer_question(question: str, resources: dict) -> tuple[str, list[dict]]:
@@ -335,6 +341,14 @@ def answer_question(question: str, resources: dict) -> tuple[str, list[dict]]:
 
     if retrieved_chunks[0]["similarity"] < MIN_SIMILARITY:
         return FALLBACK_ANSWER, retrieved_chunks
+
+    direct_answer = extract_direct_answer(
+        question=question,
+        retrieved_chunks=retrieved_chunks,
+    )
+
+    if direct_answer:
+        return direct_answer, retrieved_chunks
 
     answer = generate_answer(
         question=question,

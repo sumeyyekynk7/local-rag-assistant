@@ -1,4 +1,5 @@
 import openai
+import re
 
 from foundry_local_sdk import Configuration, FoundryLocalManager
 
@@ -8,8 +9,9 @@ from retrieval import get_top_chunks
 
 EMBEDDING_MODEL_NAME = "qwen3-embedding-0.6b"
 CHAT_MODEL_NAME = "qwen3.5-2b-text"
-TOP_K = 2
+TOP_K = 4
 MIN_SIMILARITY = 0.45
+MAX_ANSWER_TOKENS = 100
 
 
 def create_context(retrieved_chunks: list[dict]) -> str:
@@ -46,6 +48,55 @@ def print_sources(retrieved_chunks: list[dict]) -> None:
             f"(chunk {chunk['chunk_index']}, "
             f"benzerlik: {chunk['similarity']:.4f})"
         )
+
+
+def clean_answer_text(answer: str) -> str:
+    answer = answer.strip()
+
+    answer = re.sub(r"(.{2,24}?)\1{3,}$", r"\1", answer)
+    answer = re.sub(r"([?!.])(?:\s*\1){2,}$", r"\1", answer)
+
+    return answer.strip()
+
+
+def extract_direct_answer(
+    question: str,
+    retrieved_chunks: list[dict],
+) -> str | None:
+    normalized_question = question.casefold()
+
+    if "faz" not in normalized_question and "phase" not in normalized_question:
+        return None
+
+    phase_titles = []
+    seen_numbers = set()
+
+    for chunk in retrieved_chunks:
+        matches = re.findall(
+            r"Phase\s+(\d+)\s*\(([^)]+)\):\s*([^\n]+)",
+            chunk["content"],
+            flags=re.IGNORECASE,
+        )
+
+        for number, weeks, title in matches:
+            if number in seen_numbers:
+                continue
+
+            seen_numbers.add(number)
+            phase_titles.append(
+                {
+                    "number": int(number),
+                    "text": f"Phase {number} ({weeks}): {title.strip()}",
+                }
+            )
+
+    if not phase_titles:
+        return None
+
+    phase_titles.sort(key=lambda item: item["number"])
+    phase_list = "; ".join(item["text"] for item in phase_titles)
+
+    return f"Program {len(phase_titles)} faza ayrılır: {phase_list}."
 
 
 def context_can_answer(
@@ -121,7 +172,10 @@ Kesin kurallar:
 6. Sorunun cevabı bağlamda yoksa yalnızca şu cümleyi yaz:
    Bu sorunun cevabı mevcut belgelerde bulunmuyor.
 7. Cevabı Türkçe, kısa ve doğrudan yaz.
-8. Talimatları veya kuralları cevabın içinde tekrar etme.
+8. Kullanıcı kaç, hangi veya liste sorusu sorarsa bütün kaynak parçalarını birlikte değerlendir.
+9. En fazla iki cümle kur.
+10. Talimatları veya kuralları cevabın içinde tekrar etme.
+11. Aynı kelimeyi, heceyi veya cümleyi tekrar etme.
 """.strip()
 
     user_prompt = f"""
@@ -149,22 +203,20 @@ Soruyu yalnızca yukarıdaki belge bağlamına dayanarak cevapla.
             },
         ],
         temperature=0,
-        max_tokens=200,
+        max_tokens=MAX_ANSWER_TOKENS,
         stream=True,
     )
+
+    answer_parts = []
 
     for chunk in response:
         if (
             chunk.choices
             and chunk.choices[0].delta.content is not None
         ):
-            print(
-                chunk.choices[0].delta.content,
-                end="",
-                flush=True,
-            )
+            answer_parts.append(chunk.choices[0].delta.content)
 
-    print()
+    print(clean_answer_text("".join(answer_parts)))
 
 
 def main() -> None:
@@ -283,12 +335,20 @@ def main() -> None:
 
             print("\nAsistanın cevabı:\n")
 
-            generate_answer(
+            direct_answer = extract_direct_answer(
                 question=question,
-                context=context,
-                client=chat_client,
-                chat_model_id=chat_model.id,
+                retrieved_chunks=retrieved_chunks,
             )
+
+            if direct_answer:
+                print(direct_answer)
+            else:
+                generate_answer(
+                    question=question,
+                    context=context,
+                    client=chat_client,
+                    chat_model_id=chat_model.id,
+                )
 
             print_sources(retrieved_chunks)
 
