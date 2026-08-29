@@ -9,7 +9,7 @@ from console_utils import configure_utf8_output
 
 
 DATABASE_PATH = Path("data/rag_database.db")
-TOP_K = 2
+TOP_K = 4
 
 
 def cosine_similarity(

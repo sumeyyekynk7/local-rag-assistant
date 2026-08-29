@@ -50,7 +50,7 @@ Belgelere dayalı cevap üretme
 - Her parça için embedding üretir.
 - Metinleri ve embedding vektörlerini SQLite veritabanında saklar.
 - Kullanıcı sorusuna en yakın belge parçalarını cosine similarity ile bulur.
-- En ilgili iki belge parçasını cevap üretiminde kullanır.
+- En ilgili dört belge parçasını cevap üretiminde kullanır.
 - Düşük benzerlik puanına sahip soruları filtreler.
 - Belgelerde cevabı bulunmayan sorulara cevap üretmez.
 - Cevapla birlikte kullanılan kaynak dosyaları ve benzerlik puanlarını gösterir.
@@ -80,7 +80,8 @@ local-rag-assistant/
 │   └── documents/
 │       ├── foundry_local_notes.txt
 │       ├── rag_notes.txt
-│       └── sqlite_notes.txt
+│       ├── sqlite_notes.txt
+│       └── summer_school_foundry_local.docx
 │
 ├── examples/
 │   ├── check_database.py
