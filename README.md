@@ -2,6 +2,10 @@
 
 Microsoft Foundry Local kullanılarak geliştirilen, tamamen yerel çalışan bir RAG tabanlı soru-cevap uygulaması.
 
+## RAG Sistemi Çalışma Akışı
+
+![RAG Sisteminin Çalışma Akışı](assets/rag-workflow.png)
+
 ## Projenin Amacı
 
 Bu projenin amacı, yerel dokümanlardan kullanıcı sorusuyla ilgili bilgileri bulmak ve yalnızca bu bilgilere dayanarak cevap üretmektir.
@@ -75,6 +79,9 @@ qwen3.5-2b-text
 
 ```text
 local-rag-assistant/
+│
+├── assets/
+│   └── rag-workflow.png
 │
 ├── data/
 │   └── documents/
