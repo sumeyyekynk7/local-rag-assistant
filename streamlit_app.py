@@ -1,4 +1,5 @@
 from html import escape
+from pathlib import Path
 
 import openai
 import streamlit as st
@@ -8,8 +9,8 @@ from foundry_local_sdk import Configuration, FoundryLocalManager
 from rag_assistant import (
     CHAT_MODEL_NAME,
     EMBEDDING_MODEL_NAME,
-    MIN_SIMILARITY,
     MAX_ANSWER_TOKENS,
+    MIN_SIMILARITY,
     TOP_K,
     clean_answer_text,
     create_context,
@@ -19,10 +20,12 @@ from retrieval import get_top_chunks, load_document_chunks
 
 
 FALLBACK_ANSWER = "Bu sorunun cevabı mevcut belgelerde bulunmuyor."
+FOUNDRY_DATA_DIR = Path("data/foundry_local").resolve()
+FOUNDRY_LOGS_DIR = FOUNDRY_DATA_DIR / "logs"
 SAMPLE_QUESTIONS = [
+    "Foundry Local internet olmadan çalışabilir mi?",
     "RAG nedir?",
     "SQLite neden yerel uygulamalar için uygundur?",
-    "Foundry Local internet olmadan çalışabilir mi?",
     "Türkiye'nin başkenti neresidir?",
 ]
 
@@ -36,166 +39,302 @@ def apply_page_styles() -> None:
         }
 
         html, body, [data-testid="stAppViewContainer"] {
-            background: #f4f1eb;
-            color: #24312d;
+            background: #f7f8f5;
+            color: #111827;
+            font-family: "Segoe UI", Inter, Arial, sans-serif;
         }
 
         [data-testid="stHeader"] {
-            background: rgba(244, 241, 235, 0.92);
+            background: transparent;
+            height: 0;
+            visibility: hidden;
         }
 
-        [data-testid="stToolbar"], [data-testid="stDecoration"] {
+        [data-testid="stToolbar"],
+        [data-testid="stDecoration"] {
             display: none;
         }
 
-        .block-container {
-            max-width: 1080px;
-            padding-top: 2.3rem;
-            padding-bottom: 3rem;
-        }
-
-        .page-kicker {
-            color: #6f7b75;
-            font-size: 0.82rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            margin-bottom: 0.25rem;
-        }
-
-        .page-title {
-            color: #24312d;
-            font-size: 2.15rem;
-            font-weight: 760;
-            line-height: 1.12;
-            margin-bottom: 0.35rem;
-        }
-
-        .page-subtitle {
-            color: #60706a;
-            font-size: 1rem;
-            margin-bottom: 1.8rem;
-        }
-
-        [data-testid="stMetric"] {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            border-radius: 8px;
-            padding: 0.75rem 0.85rem;
-            color: #f7f2e8;
-        }
-
-        [data-testid="stMetric"] label,
-        [data-testid="stMetric"] [data-testid="stMetricLabel"] {
-            color: rgba(247, 242, 232, 0.78);
-        }
-
-        [data-testid="stMetricValue"] {
-            color: #fffaf0;
+        [data-testid="stSidebarCollapsedControl"],
+        [data-testid="stSidebarCollapseButton"] {
+            display: none !important;
         }
 
         [data-testid="stSidebar"] {
-            background: #2f3f39;
-            border-right: 1px solid #21302b;
+            display: block !important;
+            min-width: 20rem !important;
+            transform: translateX(0) !important;
+            visibility: visible !important;
+            width: 20rem !important;
         }
 
-        [data-testid="stSidebar"] * {
-            color: #fffaf0;
+        [data-testid="stSidebarContent"] {
+            width: 20rem !important;
         }
 
-        [data-testid="stSidebar"] .stButton > button {
-            background: #41574f;
-            border: 1px solid #5e756d;
-            border-radius: 8px;
-            color: #fffaf0;
-            font-weight: 650;
+        .block-container {
+            max-width: 980px;
+            padding-top: 0.75rem;
+            padding-bottom: 6rem;
         }
 
-        [data-testid="stSidebar"] .stButton > button:hover {
-            background: #536b62;
-            border-color: #8ca49a;
-            color: #ffffff;
+        .assistant-header {
+            border-bottom: 1px solid #d9e2dc;
+            margin-bottom: 1.2rem;
+            padding-bottom: 1rem;
         }
 
-        [data-testid="stSidebar"] hr {
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .stButton > button[kind="primary"] {
-            background: #8b5e3c;
-            border: 1px solid #8b5e3c;
-            color: #fffaf0;
-        }
-
-        .stButton > button[kind="primary"]:hover {
-            background: #71492d;
-            border-color: #71492d;
-            color: #ffffff;
-        }
-
-        .result-panel {
-            background: #fffdf8;
-            border: 1px solid #dfd6c8;
-            border-radius: 8px;
-            padding: 1.05rem 1.1rem;
-            margin: 0.85rem 0 1.2rem;
-            box-shadow: 0 8px 22px rgba(46, 39, 30, 0.05);
-        }
-
-        .result-label {
-            color: #7a6a58;
-            font-size: 0.76rem;
-            font-weight: 750;
-            letter-spacing: 0.06em;
+        .assistant-kicker {
+            color: #21725f;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.28rem;
             text-transform: uppercase;
+        }
+
+        .assistant-title {
+            color: #111827;
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.15;
             margin-bottom: 0.35rem;
         }
 
-        .question-text {
-            color: #24312d;
-            font-weight: 680;
-            margin-bottom: 0.75rem;
+        .assistant-subtitle {
+            color: #5c6b64;
+            font-size: 1rem;
+            line-height: 1.55;
+            max-width: 720px;
         }
 
-        .answer-text {
-            color: #24312d;
-            line-height: 1.65;
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            margin-top: 0.85rem;
         }
 
-        div[data-testid="stExpander"] {
-            background: #fffdf8;
-            border: 1px solid #dfd6c8;
+        .pill {
+            background: #ffffff;
+            border: 1px solid #d9e2dc;
+            border-radius: 999px;
+            color: #31423a;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 0.38rem 0.72rem;
+        }
+
+        [data-testid="stSidebar"] {
+            background: #153c34;
+            border-right: 1px solid #0e2b25;
+        }
+
+        [data-testid="stSidebar"] * {
+            color: #f8fffb;
+        }
+
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3 {
+            color: #ffffff;
+            font-weight: 800;
+        }
+
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] .stCaptionContainer {
+            color: rgba(248, 255, 251, 0.78);
+        }
+
+        [data-testid="stSidebar"] hr {
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        [data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.16);
             border-radius: 8px;
+            padding: 0.72rem 0.82rem;
         }
 
-        [data-testid="stDataFrame"] {
-            border: 1px solid #dfd6c8;
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetric"] label {
+            color: rgba(248, 255, 251, 0.78) !important;
+        }
+
+        [data-testid="stMetricValue"] {
+            color: #ffffff;
+            font-size: 1.45rem;
+            font-weight: 800;
+        }
+
+        .stButton > button {
+            background: #ffffff;
+            border: 1px solid #cfd9d3;
             border-radius: 8px;
-            overflow: hidden;
+            color: #17221d;
+            font-weight: 700;
+            min-height: 2.65rem;
+            white-space: normal;
+        }
+
+        .stButton > button:hover {
+            border-color: #21725f;
+            color: #153c34;
+        }
+
+        [data-testid="stFormSubmitButton"] button {
+            background: #21725f !important;
+            border: 1px solid #21725f !important;
+            color: #ffffff !important;
+            width: 100%;
+        }
+
+        [data-testid="stFormSubmitButton"] button:hover {
+            background: #195947 !important;
+            border-color: #195947 !important;
+            color: #ffffff !important;
+        }
+
+        [data-testid="stSidebar"] .stButton > button {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        [data-testid="stSidebar"] .stButton > button:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.52);
+            color: #ffffff;
+        }
+
+        .empty-panel {
+            background: #ffffff;
+            border: 1px solid #d9e2dc;
+            border-radius: 8px;
+            margin: 1.2rem 0 1rem;
+            padding: 1rem;
+        }
+
+        .empty-title {
+            color: #17221d;
+            font-size: 1rem;
+            font-weight: 800;
+            margin-bottom: 0.28rem;
+        }
+
+        .empty-copy {
+            color: #5c6b64;
+            line-height: 1.55;
+        }
+
+        div[data-testid="stForm"] {
+            background: #ffffff;
+            border: 1px solid #d9e2dc;
+            border-radius: 8px;
+            box-shadow: 0 12px 28px rgba(17, 24, 39, 0.06);
+            margin: 1rem 0 1.2rem;
+            padding: 0.9rem 0.95rem 0.75rem;
+        }
+
+        div[data-testid="stForm"] label {
+            color: #31423a !important;
+            font-weight: 800 !important;
+        }
+
+        input, textarea {
+            background: #fbfdfb !important;
+            border: 1px solid #cfd9d3 !important;
+            border-radius: 8px !important;
+            color: #111827 !important;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: #75837d !important;
+            opacity: 1 !important;
+        }
+
+        .message-row {
+            display: flex;
+            margin: 0.72rem 0;
+            width: 100%;
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-row.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            border-radius: 8px;
+            line-height: 1.62;
+            max-width: min(78%, 740px);
+            padding: 0.88rem 1rem;
+        }
+
+        .message-bubble.user {
+            background: #21725f;
+            color: #ffffff;
+        }
+
+        .message-bubble.assistant {
+            background: #ffffff;
+            border: 1px solid #d9e2dc;
+            box-shadow: 0 10px 24px rgba(17, 24, 39, 0.05);
+            color: #111827;
+        }
+
+        .message-label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+
+        .message-bubble.user .message-label {
+            color: rgba(255, 255, 255, 0.78);
+        }
+
+        .message-bubble.assistant .message-label {
+            color: #21725f;
+        }
+
+        .sources-title {
+            color: #66756e;
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            margin: 0.65rem 0 0.35rem;
+            text-transform: uppercase;
         }
 
         .source-table {
-            width: 100%;
+            background: #ffffff;
+            border: 1px solid #d9e2dc;
             border-collapse: collapse;
-            background: #fffdf8;
-            border: 1px solid #dfd6c8;
             border-radius: 8px;
-            color: #24312d;
+            color: #17221d;
+            margin: 0 0 0.7rem;
             overflow: hidden;
-            margin: 0 0 1rem;
+            width: 100%;
         }
 
         .source-table th,
         .source-table td {
-            border-bottom: 1px solid #eadfce;
-            padding: 0.72rem 0.78rem;
+            border-bottom: 1px solid #edf1ee;
+            padding: 0.62rem 0.72rem;
             text-align: left;
         }
 
         .source-table th {
-            background: #ebe3d6;
-            color: #5b4d3f;
-            font-size: 0.78rem;
+            background: #edf3ef;
+            color: #405249;
+            font-size: 0.74rem;
+            font-weight: 800;
             letter-spacing: 0.04em;
             text-transform: uppercase;
         }
@@ -205,13 +344,13 @@ def apply_page_styles() -> None:
         }
 
         .score-row {
-            color: #6b5e4d;
+            color: #5c6b64;
             font-size: 0.86rem;
-            margin: 0.3rem 0 0.7rem;
+            margin: 0.35rem 0 0.75rem;
         }
 
         .score-track {
-            background: #ece2d3;
+            background: #dfe8e3;
             border-radius: 999px;
             height: 8px;
             margin-top: 0.3rem;
@@ -219,15 +358,40 @@ def apply_page_styles() -> None:
         }
 
         .score-fill {
-            background: #8b5e3c;
+            background: #21725f;
             display: block;
             height: 8px;
         }
 
-        textarea, input {
-            background: #fffdf8 !important;
-            color: #24312d !important;
-            border-color: #d8cdbd !important;
+        div[data-testid="stExpander"] {
+            background: #ffffff;
+            border: 1px solid #d9e2dc;
+            border-radius: 8px;
+        }
+
+        [data-testid="stAlert"] {
+            background: #fff7d6;
+            border: 1px solid #e3c45d;
+            border-radius: 8px;
+        }
+
+        [data-testid="stAlert"] * {
+            color: #433814 !important;
+        }
+
+        @media (max-width: 760px) {
+            .block-container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .assistant-title {
+                font-size: 1.65rem;
+            }
+
+            .message-bubble {
+                max-width: 100%;
+            }
         }
         </style>
         """,
@@ -267,20 +431,19 @@ Soruyu yalnızca yukarıdaki belge bağlamına dayanarak cevapla.
 """.strip()
 
     return [
-        {
-            "role": "system",
-            "content": system_prompt,
-        },
-        {
-            "role": "user",
-            "content": user_prompt,
-        },
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
     ]
 
 
 @st.cache_resource(show_spinner=False)
 def load_rag_resources() -> dict:
-    config = Configuration(app_name="local-rag-assistant")
+    FOUNDRY_LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    config = Configuration(
+        app_name="local-rag-assistant",
+        app_data_dir=str(FOUNDRY_DATA_DIR),
+        logs_dir=str(FOUNDRY_LOGS_DIR),
+    )
     FoundryLocalManager.initialize(config)
 
     manager = FoundryLocalManager.instance
@@ -360,6 +523,21 @@ def answer_question(question: str, resources: dict) -> tuple[str, list[dict]]:
     return answer, retrieved_chunks
 
 
+def get_chunk_count() -> int:
+    try:
+        return len(load_document_chunks())
+    except FileNotFoundError:
+        return 0
+
+
+def initialize_session_state() -> None:
+    if "records" not in st.session_state:
+        st.session_state.records = []
+
+    if "pending_question" not in st.session_state:
+        st.session_state.pending_question = None
+
+
 def render_similarity_bar(similarity: float) -> None:
     score = max(0.0, min(similarity, 1.0))
     st.markdown(
@@ -394,6 +572,7 @@ def render_sources(chunks: list[dict]) -> None:
 
     st.markdown(
         f"""
+        <div class="sources-title">Kaynaklar</div>
         <table class="source-table">
             <thead>
                 <tr>
@@ -403,9 +582,7 @@ def render_sources(chunks: list[dict]) -> None:
                     <th>Benzerlik</th>
                 </tr>
             </thead>
-            <tbody>
-                {rows}
-            </tbody>
+            <tbody>{rows}</tbody>
         </table>
         """,
         unsafe_allow_html=True,
@@ -420,146 +597,168 @@ def render_sources(chunks: list[dict]) -> None:
             st.write(chunk["content"])
 
 
-def initialize_session_state() -> None:
-    if "records" not in st.session_state:
-        st.session_state.records = []
+def submit_question(question: str) -> None:
+    cleaned_question = question.strip()
 
-    if "pending_question" not in st.session_state:
-        st.session_state.pending_question = None
+    if not cleaned_question:
+        return
 
-    if "question_input" not in st.session_state:
-        st.session_state.question_input = ""
+    with st.spinner("Belgelerde aranıyor..."):
+        resources = load_rag_resources()
+        answer, sources = answer_question(cleaned_question, resources)
+
+    st.session_state.records.append(
+        {
+            "question": cleaned_question,
+            "answer": answer,
+            "sources": sources,
+        }
+    )
+
+
+def queue_question(question: str) -> None:
+    st.session_state.pending_question = question
+    st.rerun()
+
+
+def format_message(content: str) -> str:
+    return escape(content).replace("\n", "<br>")
 
 
 def render_sidebar() -> None:
     with st.sidebar:
-        st.subheader("Kütüphane")
+        st.subheader("Local RAG")
+        st.caption("Belge tabanlı yerel asistan")
 
-        try:
-            chunk_count = len(load_document_chunks())
-        except FileNotFoundError:
-            chunk_count = 0
-
-        st.metric("Belge parçası", chunk_count)
-        st.metric("Top K", TOP_K)
-        st.metric("Minimum benzerlik", MIN_SIMILARITY)
+        st.metric("Belge parçası", get_chunk_count())
+        st.metric("Kaynak sayısı", TOP_K)
+        st.metric("Eşik", MIN_SIMILARITY)
 
         st.divider()
-        st.subheader("Demo soruları")
+        st.subheader("Hazır sorular")
 
-        for question in SAMPLE_QUESTIONS:
-            if st.button(question, width="stretch"):
-                st.session_state.pending_question = question
-                st.session_state.question_input = question
-                st.rerun()
+        for index, question in enumerate(SAMPLE_QUESTIONS):
+            if st.button(question, key=f"sidebar_sample_{index}", width="stretch"):
+                queue_question(question)
 
         st.divider()
 
-        if st.button("Geçmişi temizle", width="stretch"):
+        if st.button("Sohbeti temizle", width="stretch"):
             st.session_state.records = []
             st.session_state.pending_question = None
-            st.session_state.question_input = ""
             st.rerun()
 
 
-def render_record(record: dict, index: int) -> None:
+def render_header() -> None:
     st.markdown(
         f"""
-        <div class="result-panel">
-            <div class="result-label">Soru {index}</div>
-            <div class="question-text">{escape(record["question"])}</div>
-            <div class="result-label">Cevap</div>
-            <div class="answer-text">{escape(record["answer"])}</div>
+        <div class="assistant-header">
+            <div class="assistant-kicker">Yerel RAG asistanı</div>
+            <div class="assistant-title">Belgelerinle sohbet et</div>
+            <div class="assistant-subtitle">
+                Sorunu yaz, asistan en yakın belge parçalarını bulup kaynaklı cevap versin.
+            </div>
+            <div class="pill-row">
+                <span class="pill">{get_chunk_count()} belge parçası</span>
+                <span class="pill">{TOP_K} kaynak kullanılır</span>
+                <span class="pill">Eşik {MIN_SIMILARITY}</span>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    render_sources(record.get("sources", []))
 
 
-def render_message_history() -> None:
-    for index, record in enumerate(st.session_state.records, start=1):
-        render_record(record, index)
+def render_empty_state() -> None:
+    st.markdown(
+        """
+        <div class="empty-panel">
+            <div class="empty-title">Asistan hazır.</div>
+            <div class="empty-copy">
+                Aşağıdan bir soru yazabilir veya hızlı sorulardan biriyle demo başlatabilirsin.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-def render_answer(question: str) -> None:
-    with st.spinner("Belgelerde aranıyor..."):
-        resources = load_rag_resources()
-        answer, sources = answer_question(question, resources)
+def render_composer() -> str | None:
+    with st.form("assistant_composer", clear_on_submit=True):
+        input_column, button_column = st.columns([6, 1])
 
-    record = {
-        "question": question,
-        "answer": answer,
-        "sources": sources,
-    }
-    st.session_state.records.append(record)
-    render_record(record, len(st.session_state.records))
+        with input_column:
+            question = st.text_input(
+                "Soru",
+                placeholder="Belgeler hakkında soru sor...",
+                label_visibility="collapsed",
+            )
 
-
-def render_question_form() -> str | None:
-    with st.form("question_form", clear_on_submit=False):
-        st.text_area(
-            "Soru",
-            key="question_input",
-            height=96,
-            placeholder="Belgelerde aramak istediğiniz soruyu yazın.",
-        )
-        submitted = st.form_submit_button(
-            "Cevabı getir",
-            type="primary",
-            width="content",
-        )
+        with button_column:
+            submitted = st.form_submit_button("Gönder", width="stretch")
 
     if not submitted:
         return None
 
-    question = st.session_state.question_input.strip()
+    cleaned_question = question.strip()
 
-    if not question:
-        st.warning("Lütfen boş olmayan bir soru girin.")
+    if not cleaned_question:
+        st.warning("Lütfen bir soru yaz.")
         return None
 
-    return question
+    return cleaned_question
 
 
-def render_page_header() -> None:
-    st.markdown(
-        """
-        <div class="page-kicker">Yerel belge arama</div>
-        <div class="page-title">Doküman Soru-Cevap Paneli</div>
-        <div class="page-subtitle">
-            Belgelerdeki en ilgili parçaları bulur, cevabı kaynaklarıyla birlikte gösterir.
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+def render_conversation() -> None:
+    if not st.session_state.records:
+        render_empty_state()
+        return
+
+    for record in st.session_state.records:
+        st.markdown(
+            f"""
+            <div class="message-row user">
+                <div class="message-bubble user">
+                    <div class="message-label">Sen</div>
+                    {format_message(record["question"])}
+                </div>
+            </div>
+            <div class="message-row assistant">
+                <div class="message-bubble assistant">
+                    <div class="message-label">Asistan</div>
+                    {format_message(record["answer"])}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        render_sources(record.get("sources", []))
 
 
 def main() -> None:
     st.set_page_config(
-        page_title="Doküman Soru-Cevap",
+        page_title="Local RAG Assistant",
         layout="wide",
+        initial_sidebar_state="expanded",
     )
 
     apply_page_styles()
     initialize_session_state()
-
-    render_page_header()
     render_sidebar()
-    render_message_history()
+    render_header()
 
     if st.session_state.pending_question:
-        question = st.session_state.pending_question
+        pending_question = st.session_state.pending_question
         st.session_state.pending_question = None
-        render_answer(question)
-        return
+        submit_question(pending_question)
 
-    question = render_question_form()
+    render_conversation()
 
-    if not question:
-        return
+    prompt = render_composer()
 
-    render_answer(question)
+    if prompt:
+        submit_question(prompt)
+        st.rerun()
 
 
 if __name__ == "__main__":
