@@ -28,6 +28,7 @@ data/*.sqlite3
 
 # Foundry Local / model cache
 .foundry/
+data/foundry_local/
 models/
 cache/
 
